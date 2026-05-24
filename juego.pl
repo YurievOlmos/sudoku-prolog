@@ -41,6 +41,19 @@ tablero(dificil, [
     [5, 0, 0, 2, 0, 0, 0, 0, 0]
 ]).
 
+% Sudoku nivel casicompleto
+tablero(casicompleto, [
+      [3, 1, 8, 6, 4, 2, 7, 9, 5],
+      [7, 6, 9, 3, 5, 1, 2, 8, 4],                                                                                                  
+      [2, 4, 5, 9, 7, 8, 6, 3, 1],
+      [6, 2, 7, 1, 8, 5, 3, 4, 9],                                                                                                  
+      [5, 9, 3, 4, 6, 7, 1, 2, 8],
+      [4, 8, 1, 2, 9, 3, 5, 7, 6],                                                                                                  
+      [8, 7, 6, 5, 2, 4, 9, 1, 3],
+      [1, 5, 4, 7, 3, 9, 8, 6, 2],                                                                                                  
+      [9, 3, 2, 8, 1, 6, 4, 5, 0]
+]).
+
 % Reglas del Sudoku
 
 % Regla de fila: todos los números en una fila deben ser únicos
@@ -131,4 +144,39 @@ sudoku_valido(Tablero) :-
     filas_validas(Tablero),
     columnas_validas(Tablero),
     cajas_validas(Tablero).
+
+% insertar_valor(+Tablero, +Fila, +Col, +Valor, -NuevoTablero)
+% Reemplaza la celda (Fila, Col) con Valor. Índices 1..9. Valor 0 = borrar.
+insertar_valor(Tablero, Fila, Col, Valor, NuevoTablero) :-
+    nth1(Fila, Tablero,      FilaVieja, RestoFilas),
+    nth1(Col,  FilaVieja,    _,         RestoCol),
+    nth1(Col,  FilaNueva,    Valor,     RestoCol),
+    nth1(Fila, NuevoTablero, FilaNueva, RestoFilas).
+
+% Predicados de diagnóstico: identifican qué restricción se viola.
+
+% fila_invalida(?N, +Tablero)
+fila_invalida(N, Tablero) :-
+    between(1, 9, N),
+    nth1(N, Tablero, Fila),
+    \+ fila_valida(Fila).
+
+% columna_invalida(?N, +Tablero)
+columna_invalida(N, Tablero) :-
+    between(1, 9, N),
+    columna(N, Tablero, Col),
+    \+ fila_valida(Col).
+
+% cuadrante_invalido(?FilaInicio, ?ColInicio, +Tablero)
+% FilaInicio y ColInicio son 0-based (0, 3 o 6).
+cuadrante_invalido(FilaInicio, ColInicio, Tablero) :-
+    member(FilaInicio, [0, 3, 6]),
+    member(ColInicio,  [0, 3, 6]),
+    caja(FilaInicio, ColInicio, Tablero, Caja),
+    \+ fila_valida(Caja).
+
+% tablero_completo(+Tablero)
+% Verdadero si ninguna celda contiene 0 (tablero totalmente lleno).
+tablero_completo(Tablero) :-
+    \+ (member(Fila, Tablero), member(0, Fila)).
 

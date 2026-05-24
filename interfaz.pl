@@ -1,12 +1,31 @@
 %  Interfaz del Sudoku
-%    - imprimir_tablero(+Tablero)
-%    - leer_jugada(-Fila, -Col, -Valor)
+%    - iniciar/0               punto de entrada: menú + bucle de juego
+%    - menu_dificultad/1       selección de nivel con validación
+%    - bucle_juego/1           loop principal: muestra tablero y lee jugadas
+%    - imprimir_tablero/1
+%    - leer_jugada/3
+
+:- [juego].
+
+% implementación de read_line_to_string/2 con get_char 
+read_line_to_string(Stream, String) :-
+    leer_chars(Stream, Chars),
+    atom_chars(Atom, Chars),
+    atom_string(Atom, String).
+
+leer_chars(Stream, Chars) :-
+    get_char(Stream, C),
+    (   (C == '\n' ; C == end_of_file)
+    ->  Chars = []
+    ;   Chars = [C | Resto],
+        leer_chars(Stream, Resto)
+    ).
 
 % imprimir_tablero(+Tablero)
 imprimir_tablero(Tablero) :-
     nl,
-    write('      1   2   3   4   5   6   7   8   9'), nl,
-    write('    +───────────+───────────+───────────+'), nl,
+    write('       1  2  3    4  5  6    7  8  9'), nl,
+    write('    +───────────+──────────+──────────+'), nl,
     imprimir_filas(Tablero, 1).
 
 
@@ -22,7 +41,7 @@ imprimir_filas([Fila|Resto], NumFila) :-
     nl,
     % Separador horizontal de cuadrante después de filas 3, 6 y 9
     (   (NumFila =:= 3 ; NumFila =:= 6 ; NumFila =:= 9)
-    ->  write('    +───────────+───────────+───────────+'), nl
+    ->  write('    +───────────+──────────+──────────+'), nl
     ;   true
     ),
     NumFilaSig is NumFila + 1,
@@ -43,7 +62,7 @@ imprimir_celdas([Celda|Resto], NumCol) :-
     ),
     % Separador vertical de cuadrante después de columnas 3 y 6
     (   (NumCol =:= 3 ; NumCol =:= 6)
-    ->  write('|')
+    ->  write(' |')
     ;   true
     ),
     NumColSig is NumCol + 1,
@@ -75,3 +94,98 @@ leer_dato(Prompt, Dato) :-
     ;   write('  [!] Ingresa un número del 1 al 9 (o 0 para salir).'), nl,
         leer_dato(Prompt, Dato)
     ).
+
+% ── Punto de entrada ──────────────────────────────────────────────────────────
+
+iniciar :-
+    menu_dificultad(Nivel),
+    tablero(Nivel, Tablero),
+    bucle_juego(Tablero).
+
+% ── Menú de dificultad ────────────────────────────────────────────────────────
+
+menu_dificultad(Nivel) :-
+    nl,
+    write('  ┌──────────────────────────────┐'), nl,
+    write('  │       SUDOKU EN PROLOG       │'), nl,
+    write('  ├──────────────────────────────┤'), nl,
+    write('  │  Selecciona tu tablero       │'), nl,
+    write('  │    1.  Fácil                 │'), nl,
+    write('  │    2.  Intermedio            │'), nl,
+    write('  │    3.  Difícil               │'), nl,
+    write('  └──────────────────────────────┘'), nl,
+    write('  Opción: '),
+    read_line_to_string(user_input, Linea),
+    (   Linea = "1" -> Nivel = facil
+    ;   Linea = "2" -> Nivel = intermedio
+    ;   Linea = "3" -> Nivel = dificil
+    ;   Linea = "4" -> Nivel = casicompleto
+    ;   write('  [!] Opción inválida. Elige 1, 2 o 3.'), nl,
+        menu_dificultad(Nivel)
+    ).
+
+% ── Bucle principal de interfaz de usuario ────────────────────────────────────
+
+bucle_juego(Tablero) :-
+    imprimir_tablero(Tablero), nl,
+    write('  Jugada  >  <fila> <columna> <valor>   (ejem: > 3 5 7)'), nl,
+    write('  Salir   >  x  o  q'), nl,
+    write('  > '),
+    read_line_to_string(user_input, Linea),
+    (   (Linea = "x" ; Linea = "q")
+    ->  nl, write('  ¡Hasta luego!'), nl
+    ;   (   parsear_jugada(Linea, Fila, Col, Valor)
+        ->  insertar_valor(Tablero, Fila, Col, Valor, NuevoTablero),
+            (   sudoku_valido(NuevoTablero)
+            ->  (   tablero_completo(NuevoTablero)
+                ->  imprimir_tablero(NuevoTablero),
+                    imprimir_victoria
+                ;   bucle_juego(NuevoTablero)
+                )
+            ;   reportar_invalido(NuevoTablero),
+                bucle_juego(Tablero)
+            )
+        ;   write('  [!] Formato inválido. Usa: fila col valor  (ej. 3 5 7)'), nl,
+            bucle_juego(Tablero)
+        )
+    ).
+
+% reportar_invalido(+Tablero)
+% Muestra qué filas, columnas y cuadrantes tienen duplicados.
+reportar_invalido(Tablero) :-
+    nl,
+    write('  [!] Movimiento inválido'), nl,
+    findall(N,     fila_invalida(N, Tablero),          Filas),
+    findall(N,     columna_invalida(N, Tablero),       Cols),
+    findall(FI-CI, cuadrante_invalido(FI, CI, Tablero), Cuads),
+    (Filas \= [] -> format('      · Fila(s) con duplicados:      ~w~n', [Filas]) ; true),
+    (Cols  \= [] -> format('      · Columna(s) con duplicados:   ~w~n', [Cols])  ; true),
+    (Cuads \= [] -> maplist(describir_cuadrante, Cuads) ; true), nl.
+
+% describir_cuadrante(+FI-CI)
+% Convierte índices 0-based del bloque a rangos 1-based legibles.
+describir_cuadrante(FI-CI) :-
+    F1 is FI + 1, F2 is FI + 3,
+    C1 is CI + 1, C2 is CI + 3,
+    format('      · Cuadrante filas ~w-~w, cols ~w-~w con duplicados~n', [F1, F2, C1, C2]).
+
+% imprimir_victoria/0
+% Despliega "SUDOKU!" en letras de bloque ASCII de 5 filas.
+imprimir_victoria :-
+    nl,
+    write('   ████ █   █ ████   ███  █   █ █   █  █'), nl,
+    write('  █     █   █ █   █ █   █ █  █  █   █  █'), nl,
+    write('   ███  █   █ █   █ █   █ ███   █   █  █'), nl,
+    write('      █ █   █ █   █ █   █ █  █  █   █   '), nl,
+    write('  ████   ███  ████   ███  █   █  ███   █'), nl,
+    nl,
+    write('  ¡Felicidades! Completaste el Sudoku.'), nl, nl.
+
+% parsear_jugada(+Linea, -Fila, -Col, -Valor)
+% Descompone "F C V" en tres enteros; Valor 0 borra una celda.
+parsear_jugada(Linea, Fila, Col, Valor) :-
+    split_string(Linea, " ", " ", Partes),
+    exclude(=(""), Partes, [SF, SC, SV | _]),
+    number_string(Fila,  SF), integer(Fila),  between(1, 9, Fila),
+    number_string(Col,   SC), integer(Col),   between(1, 9, Col),
+    number_string(Valor, SV), integer(Valor), between(0, 9, Valor).
