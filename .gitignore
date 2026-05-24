@@ -1,0 +1,13 @@
+# Prolog
+*.qlf
+*.pl.d
+*.po
+
+# SWI-Prolog
+*.sav
+swipl-*.tmp
+
+# VS Code
+.vscode/
+*.code-workspace
+.history/
