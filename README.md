@@ -5,14 +5,6 @@
 Este proyecto es una implementación interactiva del juego Sudoku desarrollada en Prolog. El programa permite al usuario seleccionar entre tres niveles de dificultad (fácil, intermedio y avanzado), adaptando el reto según su habilidad. El juego se maneja a través de la consola, donde el usuario realiza inserciones de valores que son validadas en tiempo real, garantizando que se respeten estrictamente las restricciones lógicas de filas, columnas y cuadrantes.
 
 ## 2. Integrantes
-
-- Espino Gutiérrez Alejandro (322069512)
-
-- Martínez Sasaguri Kiyomi Amanda (322272929)
-
-- Olmos Ortiz Andrea Lucia (322149977)
-
-- Reynoso Ascencio Alexa (322179457)
  
 ## 3. Instrucciones de uso
 
